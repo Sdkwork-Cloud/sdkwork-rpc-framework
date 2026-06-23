@@ -1,0 +1,15 @@
+[package]
+name = "sdkwork-rpc-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SDKWork RPC framework core: identity, profiles, and shared primitives."
+
+[lib]
+name = "sdkwork_rpc_framework_core"
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+sdkwork-rpc-core-rust.workspace = true
+thiserror.workspace = true

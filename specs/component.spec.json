@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-rpc-framework-workspace",
+    "displayName": "SDKWork RPC Framework Workspace",
+    "version": "0.1.0",
+    "type": "rust-crate",
+    "root": "sdkwork-rpc-framework",
+    "domain": "platform",
+    "capability": "rpc-framework",
+    "surface": "internal",
+    "languages": ["rust"],
+    "generated": false,
+    "manifests": ["Cargo.toml", "README.md", "AGENTS.md"]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "RPC_FRAMEWORK_SPEC.md",
+      "path": "../sdkwork-specs/RPC_FRAMEWORK_SPEC.md",
+      "purpose": "Mandatory RPC framework integration mandate."
+    },
+    {
+      "file": "RPC_FRAMEWORK_STANDARD.md",
+      "path": "specs/RPC_FRAMEWORK_STANDARD.md",
+      "purpose": "Executable RPC framework crate and API profile."
+    },
+    {
+      "file": "DISCOVERY_SPEC.md",
+      "path": "../sdkwork-specs/DISCOVERY_SPEC.md",
+      "purpose": "Registry resolver and registration lifecycle."
+    },
+    {
+      "file": "RPC_RESILIENCE_SPEC.md",
+      "path": "../sdkwork-specs/RPC_RESILIENCE_SPEC.md",
+      "purpose": "Deadlines, retries, budgets, graceful shutdown."
+    },
+    {
+      "file": "RPC_SPEC.md",
+      "path": "../sdkwork-specs/RPC_SPEC.md",
+      "purpose": "RPC contract semantics."
+    },
+    {
+      "file": "RUST_RPC_SPEC.md",
+      "path": "../sdkwork-specs/RUST_RPC_SPEC.md",
+      "purpose": "Rust gRPC adapter rules."
+    },
+    {
+      "file": "CODE_STYLE_SPEC.md",
+      "path": "../sdkwork-specs/CODE_STYLE_SPEC.md",
+      "purpose": "Authored source structure."
+    },
+    {
+      "file": "NAMING_SPEC.md",
+      "path": "../sdkwork-specs/NAMING_SPEC.md",
+      "purpose": "Canonical naming rules."
+    },
+    {
+      "file": "RUST_CODE_SPEC.md",
+      "path": "../sdkwork-specs/RUST_CODE_SPEC.md",
+      "purpose": "Rust crate rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Verification requirements."
+    }
+  ],
+  "capabilities": [
+    "rpc.framework.identity",
+    "rpc.framework.resolver.static",
+    "rpc.framework.resolver.discovery",
+    "rpc.framework.discovery.lifecycle",
+    "rpc.framework.resilience",
+    "rpc.framework.resilience.backoff",
+    "rpc.framework.resilience.circuit_breaker",
+    "rpc.framework.client.load_balance",
+    "rpc.framework.client.transport",
+    "rpc.framework.client.metadata",
+    "rpc.framework.resilience.idempotency",
+    "rpc.framework.bootstrap.stages",
+    "rpc.framework.surface.validation",
+    "rpc.framework.server.shutdown"
+  ],
+  "verification": {
+    "commands": [
+      "cargo test --workspace",
+      "node ../sdkwork-specs/tools/check-rpc-framework-standard.mjs"
+    ]
+  }
+}

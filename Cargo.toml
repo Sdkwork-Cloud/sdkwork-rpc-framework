@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sdkwork-rpc-core",
+    "crates/sdkwork-rpc-resilience",
+    "crates/sdkwork-rpc-discovery",
+    "crates/sdkwork-rpc-client",
+    "crates/sdkwork-rpc-server",
+    "tests/architecture",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+async-trait = "0.1"
+sdkwork-rpc-core = { path = "crates/sdkwork-rpc-core" }
+sdkwork-rpc-resilience = { path = "crates/sdkwork-rpc-resilience" }
+sdkwork-rpc-discovery = { path = "crates/sdkwork-rpc-discovery" }
+sdkwork-rpc-client = { path = "crates/sdkwork-rpc-client" }
+sdkwork-rpc-server = { path = "crates/sdkwork-rpc-server" }
+sdkwork-rpc-core-rust = { package = "sdkwork-rpc-core-rust", path = "../sdkwork-appbase/crates/sdkwork-rpc-core-rust" }
+sdkwork-discovery-rpc-proto = { path = "../sdkwork-discovery/crates/sdkwork-discovery-rpc-proto" }
+sdkwork_utils_rust = { package = "sdkwork-utils-rust", path = "../sdkwork-utils/packages/sdkwork-utils-rust" }
+prost = "0.14"
+prost-types = "0.14"
+tonic = { version = "0.14.6", features = ["transport"] }
+tokio = { version = "1.52", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+tokio-stream = "0.1"
+tracing = "0.1"
+thiserror = "2.0"
+uuid = { version = "1.18", features = ["v4"] }

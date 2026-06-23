@@ -1,0 +1,24 @@
+[package]
+name = "sdkwork-rpc-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SDKWork RPC client resolver and invocation context."
+
+[lib]
+name = "sdkwork_rpc_client"
+path = "src/lib.rs"
+
+[dependencies]
+async-trait.workspace = true
+sdkwork-rpc-core.workspace = true
+sdkwork-rpc-discovery.workspace = true
+sdkwork-discovery-rpc-proto.workspace = true
+sdkwork_utils_rust.workspace = true
+tonic.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

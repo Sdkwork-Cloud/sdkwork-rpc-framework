@@ -1,0 +1,20 @@
+[package]
+name = "sdkwork-rpc-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SDKWork RPC server lifecycle helpers."
+
+[lib]
+name = "sdkwork_rpc_server"
+path = "src/lib.rs"
+
+[dependencies]
+sdkwork-rpc-discovery.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+sdkwork-rpc-core.workspace = true

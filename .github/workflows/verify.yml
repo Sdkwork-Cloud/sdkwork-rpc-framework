@@ -1,0 +1,42 @@
+name: Verify
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout sibling SDKWork dependencies
+        run: |
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-specs.git "${GITHUB_WORKSPACE}/../sdkwork-specs" || true
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-discovery.git "${GITHUB_WORKSPACE}/../sdkwork-discovery" || true
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-appbase.git "${GITHUB_WORKSPACE}/../sdkwork-appbase" || true
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-utils.git "${GITHUB_WORKSPACE}/../sdkwork-utils" || true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify workspace
+        run: |
+          cargo fmt --all -- --check
+          cargo test --workspace
+          cargo clippy --workspace -- -D warnings
+          if [ -f ../sdkwork-specs/tools/check-rpc-framework-standard.mjs ]; then
+            node ../sdkwork-specs/tools/check-rpc-framework-standard.mjs
+          fi

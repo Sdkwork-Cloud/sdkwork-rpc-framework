@@ -1,0 +1,20 @@
+[package]
+name = "sdkwork-rpc-framework-architecture-tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+sdkwork-rpc-core.workspace = true
+async-trait.workspace = true
+tonic.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+sdkwork-rpc-resilience.workspace = true
+sdkwork-rpc-client.workspace = true
+sdkwork-rpc-discovery.workspace = true
+sdkwork-discovery-rpc = { path = "../../../sdkwork-discovery/crates/sdkwork-discovery-rpc" }
+sdkwork-discovery-core = { path = "../../../sdkwork-discovery/crates/sdkwork-discovery-core" }
+sdkwork-discovery-storage-memory = { path = "../../../sdkwork-discovery/crates/sdkwork-discovery-storage-memory" }
+sdkwork-commerce-service-host = { path = "../../../sdkwork-commerce/crates/sdkwork-commerce-service-host" }
+sdkwork-commerce-rpc = { path = "../../../sdkwork-commerce/crates/sdkwork-commerce-rpc", features = ["server"] }
+sdkwork-im-rpc-service-rust = { path = "../../../sdkwork-im/crates/sdkwork-im-rpc-service-rust" }

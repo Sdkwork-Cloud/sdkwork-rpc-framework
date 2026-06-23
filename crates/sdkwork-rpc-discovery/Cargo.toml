@@ -1,0 +1,21 @@
+[package]
+name = "sdkwork-rpc-discovery"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "SDKWork discovery registration lifecycle for RPC data-plane servers."
+
+[lib]
+name = "sdkwork_rpc_discovery"
+path = "src/lib.rs"
+
+[dependencies]
+sdkwork-rpc-core.workspace = true
+sdkwork-discovery-rpc-proto.workspace = true
+sdkwork_utils_rust.workspace = true
+prost-types.workspace = true
+tonic.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
