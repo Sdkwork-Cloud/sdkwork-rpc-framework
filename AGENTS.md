@@ -27,6 +27,12 @@ This repository is a platform framework workspace, not an SDKWork application ro
 - `tests/architecture/` — cross-crate alignment verification.
 - `scripts/` — thin verification entrypoints.
 
+## Documentation Canon
+
+- [docs/README.md](docs/README.md)
+- [docs/product/prd/PRD.md](docs/product/prd/PRD.md)
+- [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md)
+
 ## Spec Resolution Order
 
 1. This `AGENTS.md`.
