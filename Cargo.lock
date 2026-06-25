@@ -1859,7 +1859,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
-name = "sdkwork-appbase-iam-bootstrap"
+name = "sdkwork-iam-bootstrap"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -2217,7 +2217,7 @@ dependencies = [
  "password-hash",
  "rand_core 0.6.4",
  "reqwest",
- "sdkwork-appbase-iam-bootstrap",
+ "sdkwork-iam-bootstrap",
  "sdkwork-database-sqlx",
  "sdkwork-iam-context-service",
  "sdkwork-utils-rust",
