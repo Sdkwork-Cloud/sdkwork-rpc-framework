@@ -7,3 +7,35 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+**/.pnpm-store/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.env.local
+.env.development.local
+.env.test.local
+.env.staging.local
+.env.production.local
+.env.postgres
+.env.release.local
+
+# Local tooling and workspace state
+.mimocode/
+**/.mimocode/
+.sdkwork/local/
+.sdkwork/tmp/
+.sdkwork/cache/
+.sdkwork/secrets/
+**/.sdkwork/local/
+**/.sdkwork/tmp/
+**/.sdkwork/cache/
+**/.sdkwork/secrets/
+tools/.gateway-alignment-report.json
