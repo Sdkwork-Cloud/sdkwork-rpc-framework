@@ -10,6 +10,7 @@ name = "sdkwork_rpc_discovery"
 path = "src/lib.rs"
 
 [dependencies]
+rand.workspace = true
 sdkwork-rpc-core.workspace = true
 sdkwork-discovery-rpc-proto.workspace = true
 sdkwork_utils_rust.workspace = true

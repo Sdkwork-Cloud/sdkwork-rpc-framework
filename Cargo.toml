@@ -26,6 +26,7 @@ sdkwork-discovery-rpc-proto = { path = "../sdkwork-discovery/crates/sdkwork-disc
 sdkwork_utils_rust = { package = "sdkwork-utils-rust", path = "../sdkwork-utils/packages/sdkwork-utils-rust" }
 prost = "0.14"
 prost-types = "0.14"
+rand = "0.9"
 tonic = { version = "0.14.6", features = ["transport"] }
 tokio = { version = "1.52", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
 tokio-stream = "0.1"

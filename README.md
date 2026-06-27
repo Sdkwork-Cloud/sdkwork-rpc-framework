@@ -1,6 +1,6 @@
 # sdkwork-rpc-framework
 
-SDKWork canonical gRPC integration framework: discovery registration, name resolution, resilience profiles, transport helpers, and server lifecycle.
+SDKWork canonical gRPC integration framework: discovery registration, name resolution, resilience profiles, transport helpers, TLS/mTLS, and server lifecycle.
 
 ## Standards
 
@@ -12,11 +12,11 @@ SDKWork canonical gRPC integration framework: discovery registration, name resol
 
 | Crate | Library name | Responsibility |
 | --- | --- | --- |
-| `sdkwork-rpc-core` | `sdkwork_rpc_framework_core` | Identity URI, profiles, bootstrap stages, RPC surface |
-| `sdkwork-rpc-resilience` | `sdkwork_rpc_resilience` | Retry policy, backoff, circuit breaker, idempotency admission |
-| `sdkwork-rpc-discovery` | `sdkwork_rpc_discovery` | Registration metadata and discovery lifecycle |
-| `sdkwork-rpc-client` | `sdkwork_rpc_client` | Resolvers, load balancing, transport, call metadata |
-| `sdkwork-rpc-server` | `sdkwork_rpc_server` | Graceful shutdown and discovery-aware serve lifecycle |
+| `sdkwork-rpc-core` | `sdkwork_rpc_framework_core` | Identity URI, profiles, bootstrap stages, RPC surface, `RpcFrameworkError` |
+| `sdkwork-rpc-resilience` | `sdkwork_rpc_resilience` | Retry policy, backoff, circuit breaker, idempotency admission, gRPC pushback parsing |
+| `sdkwork-rpc-discovery` | `sdkwork_rpc_discovery` | Registration metadata, discovery lifecycle, renew loop with backoff |
+| `sdkwork-rpc-client` | `sdkwork_rpc_client` | Resolvers, load balancing, transport, TLS/mTLS config, call metadata, watch resolver, cross-call retry budget registry |
+| `sdkwork-rpc-server` | `sdkwork_rpc_server` | Graceful shutdown, discovery-aware serve lifecycle, TLS/mTLS termination |
 
 ## Production integration checklist
 
@@ -26,6 +26,11 @@ SDKWork canonical gRPC integration framework: discovery registration, name resol
 - Apply `RpcCallMetadata` for auth, trace, and idempotency keys
 - Select resilience profiles with `ResilienceProfile::is_production_safe()`
 - Use `serve_with_discovery_lifecycle` with drain timeout for shutdown ordering
+- Enable TLS/mTLS in production: enable the `tls` cargo feature and supply `RpcTlsConfig` (client) / `RpcServerTlsConfig` (server) with separate cert and key paths
+- Configure `RenewLoopConfig` with appropriate backoff for discovery lease renewal resilience
+- Use typed `RpcFrameworkError` variants (`Transport`, `Discovery`) for retry decisions
+- Use `should_retry_call_with_pushback` for retry decisions so `RESOURCE_EXHAUSTED` retries only when the server signals `grpc-retry-pushback-ms`
+- Instantiate `RetryBudgetRegistry` at client bootstrap and share it across RPC client factories to bound the cross-call retry rate per service
 
 ## Verify
 

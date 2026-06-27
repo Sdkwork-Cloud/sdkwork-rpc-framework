@@ -9,8 +9,14 @@ description = "SDKWork RPC client resolver and invocation context."
 name = "sdkwork_rpc_client"
 path = "src/lib.rs"
 
+[features]
+# Enables TLS/mTLS for gRPC channels. Production deployments SHOULD enable this
+# so discovery and data-plane traffic is encrypted (DISCOVERY_SPEC.md §11).
+tls = ["tonic/tls-ring", "tonic/tls-webpki-roots"]
+
 [dependencies]
 async-trait.workspace = true
+rand.workspace = true
 sdkwork-rpc-core.workspace = true
 sdkwork-rpc-discovery.workspace = true
 sdkwork-discovery-rpc-proto.workspace = true
@@ -18,7 +24,7 @@ sdkwork_utils_rust.workspace = true
 tonic.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["sync", "time"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

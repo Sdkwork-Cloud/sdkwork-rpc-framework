@@ -4,6 +4,8 @@ mod discovery_resolver;
 mod load_balance;
 mod metadata;
 mod resolver;
+mod retry_budget;
+mod tls;
 mod transport;
 mod watching_discovery_resolver;
 
@@ -11,11 +13,13 @@ pub use discovery_resolver::{DiscoveryNameResolver, DiscoveryNameResolverConfig}
 pub use load_balance::{pick_endpoint, LoadBalanceAlgorithm, RoundRobinCursor};
 pub use metadata::RpcCallMetadata;
 pub use resolver::{CompositeNameResolver, NameResolver, ResolvedEndpoint, StaticNameResolver};
+pub use retry_budget::{RetryBudgetConfig, RetryBudgetRegistry};
+pub use tls::RpcTlsConfig;
 pub use transport::{
     connect_grpc_channel, connect_grpc_channel_with_config, resolve_and_connect,
     tonic_endpoint_uri, GrpcChannelConfig,
 };
-pub use watching_discovery_resolver::WatchingDiscoveryNameResolver;
+pub use watching_discovery_resolver::{WatchingDiscoveryNameResolver, WatchLoopConfig};
 
 use sdkwork_rpc_framework_core::{ResilienceProfile, ResolverProfile};
 

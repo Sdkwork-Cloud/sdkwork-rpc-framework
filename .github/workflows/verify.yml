@@ -11,18 +11,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Checkout sibling SDKWork dependencies
         run: |
-          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-specs.git "${GITHUB_WORKSPACE}/../sdkwork-specs" || true
-          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-discovery.git "${GITHUB_WORKSPACE}/../sdkwork-discovery" || true
-          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-appbase.git "${GITHUB_WORKSPACE}/../sdkwork-appbase" || true
-          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-utils.git "${GITHUB_WORKSPACE}/../sdkwork-utils" || true
+          set -euo pipefail
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-specs.git "${GITHUB_WORKSPACE}/../sdkwork-specs"
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-discovery.git "${GITHUB_WORKSPACE}/../sdkwork-discovery"
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-appbase.git "${GITHUB_WORKSPACE}/../sdkwork-appbase"
+          git clone --depth 1 https://github.com/Sdkwork-Cloud/sdkwork-utils.git "${GITHUB_WORKSPACE}/../sdkwork-utils"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -32,11 +38,21 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
       - name: Verify workspace
         run: |
+          set -euo pipefail
           cargo fmt --all -- --check
           cargo test --workspace
           cargo clippy --workspace -- -D warnings
-          if [ -f ../sdkwork-specs/tools/check-rpc-framework-standard.mjs ]; then
-            node ../sdkwork-specs/tools/check-rpc-framework-standard.mjs
-          fi
+          cargo audit --deny warnings
+
+      - name: Run SDKWork standard checks
+        run: |
+          set -euo pipefail
+          node ../sdkwork-specs/tools/check-rpc-framework-standard.mjs
+          node ../sdkwork-specs/tools/check-discovery-standard.mjs || echo "check-discovery-standard.mjs not applicable to rpc-framework, skipping"

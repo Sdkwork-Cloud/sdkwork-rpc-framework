@@ -5,6 +5,7 @@ use crate::endpoint::{normalize_grpc_endpoint, normalize_http_endpoint, require_
 use crate::rpc_metadata::{
     apply_metadata_template, unsigned_registry_read_metadata, unsigned_registry_write_metadata,
 };
+use rand::Rng;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::common::v1::InstanceStatus;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::internal::v1::registry_service_client::RegistryServiceClient;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::internal::v1::{
@@ -14,7 +15,7 @@ use sdkwork_utils_rust::is_blank;
 use thiserror::Error;
 use tonic::transport::{Channel, Endpoint};
 use tonic::{Code, Request, Status};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -73,6 +74,34 @@ pub enum DiscoveryRegistrationError {
     Transport(String),
     #[error("discovery rpc failed: {0}")]
     Rpc(String),
+}
+
+/// Tunable parameters for the lease renewal loop backoff and alerting.
+///
+/// When renewal fails, the loop switches from the steady-state
+/// `renew_interval` to exponential backoff with Full Jitter (Google SRE) so a
+/// down control plane is not hammered. After `max_consecutive_failures` the
+/// loop logs a critical error because the lease has likely expired and the
+/// instance will be evicted from the discovery registry.
+///
+/// Defaults are conservative: 1s initial, capped at the renew interval, and 3
+/// consecutive failures before critical alert. This ensures several retry
+/// attempts fit within a typical lease TTL (e.g., 30s).
+#[derive(Clone, Debug)]
+pub struct RenewLoopConfig {
+    pub initial_backoff: Duration,
+    pub max_backoff: Duration,
+    pub max_consecutive_failures: u32,
+}
+
+impl Default for RenewLoopConfig {
+    fn default() -> Self {
+        Self {
+            initial_backoff: Duration::from_secs(1),
+            max_backoff: Duration::from_secs(10),
+            max_consecutive_failures: 3,
+        }
+    }
 }
 
 pub struct DiscoveryInstanceHandle {
@@ -161,19 +190,79 @@ impl DiscoveryInstanceLifecycle {
 }
 
 impl DiscoveryInstanceHandle {
+    /// Spawns the lease renewal loop with default backoff config.
+    ///
+    /// See [`spawn_renew_loop_with_config`] for backoff behavior.
     pub fn spawn_renew_loop(self: &std::sync::Arc<Self>) -> tokio::task::JoinHandle<()> {
+        self.spawn_renew_loop_with_config(RenewLoopConfig::default())
+    }
+
+    /// Spawns the lease renewal loop with explicit backoff tunables.
+    ///
+    /// In steady state the loop sleeps for `renew_interval` between renewals.
+    /// On failure it switches to exponential backoff with Full Jitter so a
+    /// down control plane is not hammered. After `max_consecutive_failures`
+    /// consecutive failures, the loop logs a critical error because the lease
+    /// has likely expired and the instance will be evicted.
+    pub fn spawn_renew_loop_with_config(
+        self: &std::sync::Arc<Self>,
+        renew_config: RenewLoopConfig,
+    ) -> tokio::task::JoinHandle<()> {
         let handle = std::sync::Arc::clone(self);
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(handle.renew_interval);
+            let mut failures: u32 = 0;
             loop {
-                interval.tick().await;
-                if let Err(error) = handle.renew_once().await {
-                    warn!(
-                        service_name = %handle.config.service_name,
-                        instance_id = %handle.config.instance_id,
-                        error = %error,
-                        "discovery lease renewal failed"
+                if failures == 0 {
+                    // Steady state: sleep for the normal renew interval.
+                    tokio::time::sleep(handle.renew_interval).await;
+                } else {
+                    // Failure backoff: exponential with Full Jitter, capped at
+                    // max_backoff (which should not exceed renew_interval).
+                    let backoff = renew_backoff(
+                        failures,
+                        renew_config.initial_backoff,
+                        renew_config.max_backoff,
                     );
+                    tokio::time::sleep(backoff).await;
+                }
+
+                match handle.renew_once().await {
+                    Ok(()) => {
+                        if failures > 0 {
+                            info!(
+                                target: "sdkwork.rpc.discovery.renew",
+                                service_name = %handle.config.service_name,
+                                instance_id = %handle.config.instance_id,
+                                previous_failures = failures,
+                                "discovery lease renewal recovered after failures"
+                            );
+                        }
+                        failures = 0;
+                    }
+                    Err(error) => {
+                        failures = failures.saturating_add(1);
+                        if failures >= renew_config.max_consecutive_failures {
+                            error!(
+                                target: "sdkwork.rpc.discovery.renew",
+                                service_name = %handle.config.service_name,
+                                instance_id = %handle.config.instance_id,
+                                consecutive_failures = failures,
+                                lease_ttl_seconds = handle.config.lease_ttl_seconds,
+                                error = %error,
+                                "discovery lease renewal has failed beyond threshold; \
+                                 lease likely expired and instance will be evicted"
+                            );
+                        } else {
+                            warn!(
+                                target: "sdkwork.rpc.discovery.renew",
+                                service_name = %handle.config.service_name,
+                                instance_id = %handle.config.instance_id,
+                                consecutive_failures = failures,
+                                error = %error,
+                                "discovery lease renewal failed, backing off"
+                            );
+                        }
+                    }
                 }
             }
         })
@@ -265,6 +354,26 @@ fn map_status(status: Status) -> DiscoveryRegistrationError {
     DiscoveryRegistrationError::Rpc(status.to_string())
 }
 
+/// Computes a Full Jitter backoff for lease renewal retries.
+///
+/// Mirrors the watch reconnect backoff contract: the base grows exponentially
+/// with the failure count and the actual delay is uniform in `[0, base]`,
+/// bounded by `max_backoff`. Full Jitter (Google SRE) avoids thundering-herd
+/// retries when many instances lose connectivity to the control plane
+/// simultaneously.
+fn renew_backoff(failures: u32, initial: Duration, max_backoff: Duration) -> Duration {
+    let exponent = failures.min(16);
+    let base = initial
+        .saturating_mul(1u32 << exponent)
+        .min(max_backoff);
+    if base.is_zero() {
+        return initial;
+    }
+    let mut rng = rand::rng();
+    let millis = rng.random_range(0..=base.as_millis().min(u128::from(u64::MAX)) as u64);
+    Duration::from_millis(millis)
+}
+
 pub fn default_instance_id(service_name: &str) -> String {
     format!("{service_name}-{}", Uuid::new_v4())
 }
@@ -290,6 +399,38 @@ mod tests {
             grpc_advertised_endpoint("127.0.0.1:50051"),
             "grpc://127.0.0.1:50051"
         );
+    }
+
+    #[test]
+    fn renew_backoff_never_exceeds_max() {
+        let initial = Duration::from_millis(500);
+        let max = Duration::from_secs(5);
+        for failures in 1..20 {
+            let backoff = renew_backoff(failures, initial, max);
+            assert!(
+                backoff <= max,
+                "failures {failures} backoff {backoff:?} > max {max:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn renew_backoff_grows_with_failures_before_jitter() {
+        let initial = Duration::from_millis(100);
+        let max = Duration::from_secs(30);
+        let max_seen_1 = (0..256).map(|_| renew_backoff(1, initial, max).as_millis()).max();
+        let max_seen_5 = (0..256).map(|_| renew_backoff(5, initial, max).as_millis()).max();
+        assert!(
+            max_seen_5 >= max_seen_1,
+            "higher failure count should allow larger backoff"
+        );
+    }
+
+    #[test]
+    fn renew_loop_config_defaults_are_sane() {
+        let config = RenewLoopConfig::default();
+        assert!(config.initial_backoff < config.max_backoff);
+        assert!(config.max_consecutive_failures > 0);
     }
 
     fn sample_config() -> DiscoveryInstanceConfig {

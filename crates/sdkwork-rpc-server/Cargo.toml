@@ -9,6 +9,11 @@ description = "SDKWork RPC server lifecycle helpers."
 name = "sdkwork_rpc_server"
 path = "src/lib.rs"
 
+[features]
+# Enables TLS/mTLS for the gRPC server. Production deployments SHOULD enable
+# this so data-plane traffic is encrypted (RPC_FRAMEWORK_SPEC.md §10).
+tls = ["tonic/tls-ring", "tonic/tls-webpki-roots"]
+
 [dependencies]
 sdkwork-rpc-discovery.workspace = true
 tokio.workspace = true

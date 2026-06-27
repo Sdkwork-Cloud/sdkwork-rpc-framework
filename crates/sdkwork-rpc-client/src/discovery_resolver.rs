@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::common::v1::InstanceStatus;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::internal::v1::registry_service_client::RegistryServiceClient;
@@ -8,8 +10,10 @@ use sdkwork_rpc_discovery::{
 };
 use sdkwork_rpc_framework_core::RpcFrameworkError;
 use sdkwork_utils_rust::is_blank;
+use tokio::sync::OnceCell;
 use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
+use tracing::{debug, warn};
 
 use crate::resolver::{NameResolver, ResolvedEndpoint};
 
@@ -38,33 +42,73 @@ impl DiscoveryNameResolverConfig {
 #[derive(Clone, Debug)]
 pub struct DiscoveryNameResolver {
     config: DiscoveryNameResolverConfig,
+    /// Lazily-initialized, shared gRPC channel to the discovery control plane.
+    ///
+    /// Stored behind `Arc<OnceCell<Channel>>` so clones of the resolver share
+    /// the same underlying TCP+HTTP2 connection. Tonic channels auto-reconnect
+    /// on transient failures, so we never need to replace the cached channel.
+    channel: Arc<OnceCell<Channel>>,
 }
 
 impl DiscoveryNameResolver {
     pub fn new(config: DiscoveryNameResolverConfig) -> Result<Self, RpcFrameworkError> {
         config.validate()?;
-        Ok(Self { config })
+        Ok(Self {
+            config,
+            channel: Arc::new(OnceCell::new()),
+        })
     }
 
     pub fn config(&self) -> &DiscoveryNameResolverConfig {
         &self.config
     }
 
-    async fn connect(&self) -> Result<RegistryServiceClient<Channel>, RpcFrameworkError> {
-        let endpoint = normalize_http_endpoint(&self.config.discovery_endpoint);
-        let channel = Endpoint::from_shared(endpoint)
-            .map_err(|error| RpcFrameworkError::Configuration(error.to_string()))?
-            .connect()
-            .await
-            .map_err(|error| RpcFrameworkError::Configuration(error.to_string()))?;
-        Ok(RegistryServiceClient::new(channel))
+    /// Returns the cached discovery control-plane channel, establishing it on
+    /// first use. Subsequent calls (including from cloned resolvers and the
+    /// watch loop) reuse the same channel, avoiding per-call TCP+HTTP2
+    /// handshakes. Tonic channels auto-reconnect on transient failures.
+    pub(crate) async fn get_or_init_channel(&self) -> Result<Channel, RpcFrameworkError> {
+        let channel = self
+            .channel
+            .get_or_try_init(|| async {
+                let endpoint = normalize_http_endpoint(&self.config.discovery_endpoint);
+                debug!(
+                    target: "sdkwork.rpc.discovery.connect",
+                    discovery_endpoint = %endpoint,
+                    "connecting to discovery control plane"
+                );
+                let ch = Endpoint::from_shared(endpoint)
+                    .map_err(|error| RpcFrameworkError::Transport(error.to_string()))?
+                    .connect()
+                    .await
+                    .map_err(|error| {
+                        warn!(
+                            target: "sdkwork.rpc.discovery.connect",
+                            error = %error,
+                            "discovery control plane connect failed"
+                        );
+                        RpcFrameworkError::Transport(error.to_string())
+                    })?;
+                Ok::<Channel, RpcFrameworkError>(ch)
+            })
+            .await?;
+        Ok(channel.clone())
     }
 
     pub(crate) async fn discover_endpoints(
         &self,
         service_name: &str,
     ) -> Result<Vec<ResolvedEndpoint>, RpcFrameworkError> {
-        let mut client = self.connect().await?;
+        debug!(
+            target: "sdkwork.rpc.discovery.resolve",
+            service_name = %service_name,
+            namespace = %self.config.namespace,
+            environment = %self.config.environment,
+            healthy_only = self.config.healthy_only,
+            "discovering service endpoints"
+        );
+        let channel = self.get_or_init_channel().await?;
+        let mut client = RegistryServiceClient::new(channel);
         let mut grpc_request = Request::new(DiscoverInstancesRequest {
             namespace: self.config.namespace.clone(),
             environment: self.config.environment.clone(),
@@ -83,7 +127,7 @@ impl DiscoveryNameResolver {
         let response = client
             .discover_instances(grpc_request)
             .await
-            .map_err(|error| RpcFrameworkError::Configuration(error.to_string()))?
+            .map_err(|error| RpcFrameworkError::Discovery(error.to_string()))?
             .into_inner();
 
         let endpoints: Vec<ResolvedEndpoint> = response
@@ -94,10 +138,22 @@ impl DiscoveryNameResolver {
             .collect();
 
         if endpoints.is_empty() {
-            return Err(RpcFrameworkError::Configuration(format!(
+            warn!(
+                target: "sdkwork.rpc.discovery.resolve",
+                service_name = %service_name,
+                "no healthy instances resolved for service"
+            );
+            return Err(RpcFrameworkError::Discovery(format!(
                 "no healthy instances resolved for service {service_name}"
             )));
         }
+
+        debug!(
+            target: "sdkwork.rpc.discovery.resolve",
+            service_name = %service_name,
+            endpoint_count = endpoints.len(),
+            "discovered healthy endpoints"
+        );
 
         Ok(endpoints)
     }

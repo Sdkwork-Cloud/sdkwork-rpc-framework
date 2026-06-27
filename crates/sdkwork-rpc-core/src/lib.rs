@@ -25,10 +25,24 @@ pub use surface::{validate_rpc_surface, RpcSurface};
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 pub enum RpcFrameworkError {
+    /// Caller-supplied input failed validation (blank fields, malformed URIs).
+    /// Not retryable without correcting the input.
     #[error("validation failed: {0}")]
     Validation(String),
+    /// Framework or deployment configuration is invalid or incomplete (missing
+    /// TLS feature, unreadable cert paths, malformed channel config). Not
+    /// retryable without correcting the configuration.
     #[error("configuration error: {0}")]
     Configuration(String),
+    /// Transport-level failure: TCP connection refused, TLS handshake failure,
+    /// HTTP/2 protocol error. Often transient and retryable.
+    #[error("transport error: {0}")]
+    Transport(String),
+    /// Service discovery failure: no healthy instances resolved, discover RPC
+    /// returned an error, or the watch stream failed. May be retryable after
+    /// a backoff if the control plane or target service recovers.
+    #[error("discovery error: {0}")]
+    Discovery(String),
 }
 
 pub type RpcFrameworkResult<T> = Result<T, RpcFrameworkError>;
