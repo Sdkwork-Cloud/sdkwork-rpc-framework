@@ -1,4 +1,5 @@
 # sdkwork-rpc-framework
+repository-kind: foundation-dependency
 
 SDKWork canonical gRPC integration framework: discovery registration, name resolution, resilience profiles, transport helpers, TLS/mTLS, and server lifecycle.
 
