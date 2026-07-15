@@ -138,9 +138,12 @@ pub(crate) fn build_client_tls_config(
     }
 
     if let Some(ca_path) = &config.server_ca_certificate_path {
-        let pem = std::fs::read(ca_path).map_err(|error| RpcFrameworkError::Configuration(
-            format!("failed to read tls ca certificate {}: {error}", ca_path.display()),
-        ))?;
+        let pem = std::fs::read(ca_path).map_err(|error| {
+            RpcFrameworkError::Configuration(format!(
+                "failed to read tls ca certificate {}: {error}",
+                ca_path.display()
+            ))
+        })?;
         let cert = tonic::transport::Certificate::from_pem(pem);
         tls = tls.ca_certificate(cert);
     } else {
@@ -149,9 +152,7 @@ pub(crate) fn build_client_tls_config(
         tls = tls.with_webpki_roots();
     }
 
-    if let (Some(cert_path), Some(key_path)) =
-        (&config.client_cert_path, &config.client_key_path)
-    {
+    if let (Some(cert_path), Some(key_path)) = (&config.client_cert_path, &config.client_key_path) {
         let cert_pem = std::fs::read(cert_path).map_err(|error| {
             RpcFrameworkError::Configuration(format!(
                 "failed to read tls client cert {}: {error}",
@@ -200,8 +201,7 @@ mod tests {
 
     #[test]
     fn validate_rejects_nonexistent_ca_path() {
-        let config = RpcTlsConfig::server_verified()
-            .with_server_ca("/nonexistent/ca.pem");
+        let config = RpcTlsConfig::server_verified().with_server_ca("/nonexistent/ca.pem");
         let error = config.validate().expect_err("nonexistent path should fail");
         assert!(matches!(error, RpcFrameworkError::Configuration(_)));
     }

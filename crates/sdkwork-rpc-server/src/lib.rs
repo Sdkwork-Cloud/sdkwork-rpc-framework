@@ -24,6 +24,13 @@ use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::server::Router;
 use tracing::{error, info, warn};
 
+mod security;
+
+pub use security::{
+    require_verified_rpc_caller_context, require_verified_rpc_service_identity,
+    RpcInternalServiceInterceptor, RpcInternalServiceSecurity,
+};
+
 /// Error returned by the server lifecycle helpers.
 ///
 /// Typed variants (rather than `Box<dyn Error>`) let callers distinguish
@@ -286,6 +293,25 @@ impl RpcServerTlsConfig {
         }
         Ok(())
     }
+
+    /// Validates the strict mTLS profile required by internal production RPC.
+    ///
+    /// One-way TLS and optional client authentication are valid for other
+    /// listener types, but they cannot establish a trustworthy service
+    /// identity and therefore must not back an internal service interceptor.
+    pub fn validate_mtls(&self) -> Result<(), ServeError> {
+        if self.client_ca_certificate_path.is_none() {
+            return Err(ServeError::Transport(
+                "strict mTLS requires client_ca_certificate_path".to_owned(),
+            ));
+        }
+        if self.client_auth_optional {
+            return Err(ServeError::Transport(
+                "strict mTLS requires client_auth_optional=false".to_owned(),
+            ));
+        }
+        self.validate()
+    }
 }
 
 /// Applies TLS configuration to a tonic `Server` builder.
@@ -334,7 +360,9 @@ pub fn apply_server_tls(
             ))
         })?;
         let cert = tonic::transport::Certificate::from_pem(ca_pem);
-        tls = tls.client_ca_root(cert).client_auth_optional(config.client_auth_optional);
+        tls = tls
+            .client_ca_root(cert)
+            .client_auth_optional(config.client_auth_optional);
     }
 
     builder
@@ -362,11 +390,10 @@ mod tests {
     #[test]
     fn serve_error_display_distinguishes_variants() {
         assert!(format!("{}", ServeError::Transport("bind failed".into())).contains("transport"));
-        assert!(format!(
-            "{}",
-            ServeError::DiscoveryDeregister("not found".into())
-        )
-        .contains("deregister"));
+        assert!(
+            format!("{}", ServeError::DiscoveryDeregister("not found".into()))
+                .contains("deregister")
+        );
         assert!(format!("{}", ServeError::Signal("no tty".into())).contains("signal"));
     }
 

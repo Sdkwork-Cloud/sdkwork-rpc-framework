@@ -41,7 +41,10 @@ mod tests {
 
     #[test]
     fn accepts_canonical_surfaces() {
-        assert_eq!(validate_rpc_surface("internal").unwrap(), RpcSurface::Internal);
+        assert_eq!(
+            validate_rpc_surface("internal").unwrap(),
+            RpcSurface::Internal
+        );
         assert!(validate_rpc_surface("public").is_err());
     }
 }

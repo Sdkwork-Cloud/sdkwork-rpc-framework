@@ -15,6 +15,7 @@ path = "src/lib.rs"
 tls = ["tonic/tls-ring", "tonic/tls-webpki-roots"]
 
 [dependencies]
+sdkwork-rpc-core.workspace = true
 sdkwork-rpc-discovery.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
@@ -22,4 +23,6 @@ tonic.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-sdkwork-rpc-core.workspace = true
+rcgen = { version = "0.14", features = ["pem"] }
+tempfile = "3"
+tonic-health = "0.14"

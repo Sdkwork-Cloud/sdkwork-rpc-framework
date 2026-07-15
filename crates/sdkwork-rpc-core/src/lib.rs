@@ -7,20 +7,30 @@ pub use sdkwork_rpc_core_rust::{
     RPC_TRACEPARENT_METADATA,
 };
 
+mod bootstrap;
+mod caller_context;
 mod identity;
 mod profile;
-mod bootstrap;
+mod service_identity;
 mod surface;
 
 pub use bootstrap::{
     BOOTSTRAP_STAGES, SHUTDOWN_STAGES, STAGE_BIND_RPC_SERVICES,
-    STAGE_DEREGISTER_DISCOVERY_INSTANCE, STAGE_DRAIN_RPC_SERVERS,
-    STAGE_INITIALIZE_RPC_FRAMEWORK, STAGE_REGISTER_DISCOVERY_INSTANCE,
-    STAGE_START_DISCOVERY_RENEW_LOOP, STAGE_STOP_DISCOVERY_RENEW_LOOP,
-    STAGE_VALIDATE_RPC_CONTRACTS,
+    STAGE_DEREGISTER_DISCOVERY_INSTANCE, STAGE_DRAIN_RPC_SERVERS, STAGE_INITIALIZE_RPC_FRAMEWORK,
+    STAGE_REGISTER_DISCOVERY_INSTANCE, STAGE_START_DISCOVERY_RENEW_LOOP,
+    STAGE_STOP_DISCOVERY_RENEW_LOOP, STAGE_VALIDATE_RPC_CONTRACTS,
+};
+pub use caller_context::{
+    RpcCallerActorKind, RpcCallerContext, RpcCallerContextBuilder, RpcCallerContextSigner,
+    RpcCallerContextSigningKey, RpcCallerContextVerifier, SignedRpcCallerContext,
+    VerifiedRpcCallerContext, RPC_CALLER_CONTEXT_METADATA, RPC_CALLER_CONTEXT_SIGNATURE_METADATA,
+    RPC_SERVICE_IDENTITY_ASSERTION_METADATA,
 };
 pub use identity::{build_rpc_identity_uri, RpcIdentityParts};
 pub use profile::{ResilienceProfile, ResolverProfile};
+pub use service_identity::{
+    RpcServiceIdentityPolicy, VerifiedRpcServiceIdentity, SPIFFE_SERVICE_PATH_PREFIX,
+};
 pub use surface::{validate_rpc_surface, RpcSurface};
 
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]

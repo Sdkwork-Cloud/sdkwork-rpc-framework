@@ -100,19 +100,16 @@ pub async fn connect_grpc_channel_with_config(
         })?;
     }
 
-    endpoint_builder
-        .connect()
-        .await
-        .map_err(|error| {
-            warn!(
-                target: "sdkwork.rpc.transport.connect",
-                endpoint = %uri,
-                tls_enabled,
-                error = %error,
-                "grpc channel connect failed"
-            );
-            RpcFrameworkError::Transport(error.to_string())
-        })
+    endpoint_builder.connect().await.map_err(|error| {
+        warn!(
+            target: "sdkwork.rpc.transport.connect",
+            endpoint = %uri,
+            tls_enabled,
+            error = %error,
+            "grpc channel connect failed"
+        );
+        RpcFrameworkError::Transport(error.to_string())
+    })
 }
 
 /// Resolves, load-balances, and connects a shared tonic channel.
@@ -125,9 +122,7 @@ pub async fn resolve_and_connect(
 ) -> Result<Channel, RpcFrameworkError> {
     let endpoints = resolver.resolve(service_name).await?;
     let picked = pick_endpoint(&endpoints, algorithm, cursor).ok_or_else(|| {
-        RpcFrameworkError::Discovery(format!(
-            "no endpoints resolved for service {service_name}"
-        ))
+        RpcFrameworkError::Discovery(format!("no endpoints resolved for service {service_name}"))
     })?;
     connect_grpc_channel_with_config(&picked.endpoint, config).await
 }
@@ -163,7 +158,10 @@ mod tests {
     #[test]
     fn default_channel_config_has_no_tls() {
         let config = GrpcChannelConfig::default();
-        assert!(config.tls.is_none(), "default config must be plaintext for dev");
+        assert!(
+            config.tls.is_none(),
+            "default config must be plaintext for dev"
+        );
     }
 
     #[test]

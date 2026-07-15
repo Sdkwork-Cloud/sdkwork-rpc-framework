@@ -12,4 +12,12 @@ doctest = false
 
 [dependencies]
 sdkwork-rpc-core-rust.workspace = true
+sdkwork_utils_rust.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
+x509-parser.workspace = true
+
+[dev-dependencies]
+rcgen = "0.14"

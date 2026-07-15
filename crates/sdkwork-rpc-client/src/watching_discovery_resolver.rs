@@ -19,15 +19,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use sdkwork_discovery_rpc_proto::sdkwork::discovery::common::v1::{
-    InstanceStatus, WatchEventType,
-};
+use rand::Rng;
+use sdkwork_discovery_rpc_proto::sdkwork::discovery::common::v1::{InstanceStatus, WatchEventType};
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::internal::v1::discovery_watch_service_client::DiscoveryWatchServiceClient;
 use sdkwork_discovery_rpc_proto::sdkwork::discovery::internal::v1::WatchServiceRequest;
-use sdkwork_rpc_discovery::{
-    apply_metadata_template, unsigned_registry_read_metadata,
-};
-use rand::Rng;
+use sdkwork_rpc_discovery::{apply_metadata_template, unsigned_registry_read_metadata};
 use sdkwork_rpc_framework_core::RpcFrameworkError;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -203,8 +199,8 @@ impl WatchingDiscoveryNameResolver {
                 }
             }
 
-            let event_type = WatchEventType::try_from(message.event_type)
-                .unwrap_or(WatchEventType::Unspecified);
+            let event_type =
+                WatchEventType::try_from(message.event_type).unwrap_or(WatchEventType::Unspecified);
 
             // Heartbeat events carry no instance payload; they only confirm the
             // stream is alive (§10 "Idle streams SHOULD receive heartbeat
@@ -223,12 +219,12 @@ impl WatchingDiscoveryNameResolver {
             };
             let endpoint = map_discovered_instance(&instance);
             let mut cache = self.cache.write().await;
-            let entry = cache.entry(service_name.to_string()).or_insert_with(|| {
-                CachedEndpoints {
+            let entry = cache
+                .entry(service_name.to_string())
+                .or_insert_with(|| CachedEndpoints {
                     endpoints: Vec::new(),
                     updated_at: Instant::now(),
-                }
-            });
+                });
 
             let status = InstanceStatus::try_from(instance.status).ok();
             let is_serving = matches!(
@@ -315,9 +311,7 @@ fn upsert_endpoint(endpoints: &mut Vec<ResolvedEndpoint>, endpoint: ResolvedEndp
 /// thundering-herd reconnects when many clients lose a stream simultaneously.
 fn reconnect_backoff(attempt: u32, initial: Duration, max_backoff: Duration) -> Duration {
     let exponent = attempt.min(16);
-    let base = initial
-        .saturating_mul(1u32 << exponent)
-        .min(max_backoff);
+    let base = initial.saturating_mul(1u32 << exponent).min(max_backoff);
     if base.is_zero() {
         return initial;
     }
@@ -336,7 +330,10 @@ mod tests {
         let max = Duration::from_millis(500);
         for attempt in 0..20 {
             let backoff = reconnect_backoff(attempt, initial, max);
-            assert!(backoff <= max, "attempt {attempt} backoff {backoff:?} > max {max:?}");
+            assert!(
+                backoff <= max,
+                "attempt {attempt} backoff {backoff:?} > max {max:?}"
+            );
         }
     }
 
@@ -347,9 +344,16 @@ mod tests {
         // upper bound grows; we assert the base computation via a large sample.
         let initial = Duration::from_millis(100);
         let max = Duration::from_secs(10);
-        let max_seen_0 = (0..256).map(|_| reconnect_backoff(0, initial, max).as_millis()).max();
-        let max_seen_5 = (0..256).map(|_| reconnect_backoff(5, initial, max).as_millis()).max();
-        assert!(max_seen_5 >= max_seen_0, "higher attempt should allow larger backoff");
+        let max_seen_0 = (0..256)
+            .map(|_| reconnect_backoff(0, initial, max).as_millis())
+            .max();
+        let max_seen_5 = (0..256)
+            .map(|_| reconnect_backoff(5, initial, max).as_millis())
+            .max();
+        assert!(
+            max_seen_5 >= max_seen_0,
+            "higher attempt should allow larger backoff"
+        );
     }
 
     #[test]

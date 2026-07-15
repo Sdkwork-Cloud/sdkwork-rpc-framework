@@ -32,7 +32,8 @@ impl DiscoveryNameResolverConfig {
         require_non_blank(&self.discovery_endpoint, "discovery_endpoint")
             .map_err(RpcFrameworkError::Validation)?;
         require_non_blank(&self.namespace, "namespace").map_err(RpcFrameworkError::Validation)?;
-        require_non_blank(&self.environment, "environment").map_err(RpcFrameworkError::Validation)?;
+        require_non_blank(&self.environment, "environment")
+            .map_err(RpcFrameworkError::Validation)?;
         require_non_blank(&self.subject_id, "subject_id").map_err(RpcFrameworkError::Validation)?;
         require_non_blank(&self.protocol, "protocol").map_err(RpcFrameworkError::Validation)?;
         Ok(())
